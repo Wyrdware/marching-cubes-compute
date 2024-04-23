@@ -1,38 +1,36 @@
 // Each #kernel tells which function to compile; you can have many kernels
 #pragma kernel CSMain
 
-// Create a RenderTexture with enableRandomWrite flag and set it
-// with cs.SetTexture
-RWTexture2D<float4> Result;
+
 RWStructuredBuffer<float> _Positions;
 
 int _CubesPerAxis;
 int _Repetitions;
-float _Time
+float _Time;
 
 
 
 float rand(in float2 uv)
 {
-    return (frac(sin(dot(uv,float (12.9898, 78.233) * 2.0)) * 43758.5453)) * 2 - 1;
+    return (frac(sin(dot(uv, float2(12.9898, 78.233) * 2.0)) * 43758.5453)) * 2.0 - 1.0;
 }
 int indexFromID(uint3 id)
 {
 	return id.x + _CubesPerAxis * (id.y + _CubesPerAxis * id.z);
 }
+
 [numthreads(8,8,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
-    // TODO: insert actual code here!
-    if(id.x > _CubesPerAxis - 1 && id.y > _CubesPerAxis - 1) 
+    // Check if id is in the grid
+    if (id.x > _CubesPerAxis - 1 || id.y > _CubesPerAxis - 1)
     {
-    return;
+        return;
     }
 
-    for( int i = 0; I < _Repetitions; i++)
-	{
-		_Positions[indexFromID(id)] = rand(float2(id.x*_Time, id.y*_Time));
-	})
-
-    Result[id.xy] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
+    for (int i = 0; i < _Repetitions; i++)
+    {
+        // Assign random value
+        _Positions[indexFromID(id)] += rand(float2(id.x * _Time, id.y * _Time)) *_Time;
+    }
 }
