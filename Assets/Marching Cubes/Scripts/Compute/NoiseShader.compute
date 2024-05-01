@@ -1,0 +1,42 @@
+#pragma kernel CSMain
+
+#include "Includes\FastNoiseLite.compute"
+//Doesn't work with the hlsl file extension for some reason
+
+RWTexture2D<float4> Result;
+
+uint _ChunkSize;
+
+
+float _Amplitude;
+float _Frequency;
+float _Octaves;
+float _Ground;
+float4 _Offset;
+
+RWStructuredBuffer<float> _Weights;
+RWStructuredBuffer<float4> _Mod;
+
+int index(uint3 id)
+{
+	return id.x + id.y * _ChunkSize + id.z *_ChunkSize * _ChunkSize;
+}
+
+static const uint numThreads = 8;
+[numthreads(numThreads,numThreads,numThreads)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+	fnl_state noise = fnlCreateState();
+    noise.noise_type = FNL_NOISE_OPENSIMPLEX2;
+    noise.fractal_type = FNL_FRACTAL_RIDGED;
+	noise.frequency = _Frequency;
+	noise.octaves = _Octaves;
+
+	//the id is the position 
+	float3 pos = float3(id.x, id.y, id.z)  + _Offset.xyz;
+
+	float ground = -float(id.y) + (_Ground * _ChunkSize);
+	float n = ground + fnlGetNoise3D(noise, pos.x, pos.y, pos.z) * _Amplitude;
+	_Weights[index(id)] = n;
+
+}

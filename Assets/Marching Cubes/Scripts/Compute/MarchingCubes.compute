@@ -1,0 +1,93 @@
+
+#pragma kernel CSMain
+
+#include "Includes\MarchingTable.compute"
+
+
+struct Triangle 
+{
+	float3 a, b, c;
+};
+
+
+
+RWStructuredBuffer<float> _Weights;
+AppendStructuredBuffer<Triangle> _Triangles;
+
+float _IsoLevel;
+int _ChunkSize;
+
+
+
+int index(int x, int y, int z)
+{
+    return x + _ChunkSize * (y + _ChunkSize * z);
+}
+
+float3 LinearInterp(float3 edgeVertex1, float valueAtVertex1, float3 edgeVertex2, float valueAtVertex2)
+{
+    return (edgeVertex1 + (_IsoLevel - valueAtVertex1) * (edgeVertex2 - edgeVertex1) / (valueAtVertex2 - valueAtVertex1));
+}
+
+
+
+static const uint numThreads = 8;
+[numthreads(numThreads, numThreads, numThreads)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+
+	if(id.x >= _ChunkSize - 1 || id.y >= _ChunkSize - 1 || id.z >= _ChunkSize - 1)
+	{
+		return;
+	}
+	float cellValues[8] =
+	{
+       _Weights[index(id.x,     id.y,     id.z + 1)],
+       _Weights[index(id.x + 1, id.y,     id.z + 1)],
+       _Weights[index(id.x + 1, id.y,     id.z)],
+       _Weights[index(id.x,     id.y,     id.z)],
+       _Weights[index(id.x,     id.y + 1, id.z + 1)],
+       _Weights[index(id.x + 1, id.y + 1, id.z + 1)],
+       _Weights[index(id.x + 1, id.y + 1, id.z)],
+       _Weights[index(id.x,     id.y + 1, id.z)]
+	};
+	
+	//Determine index of edge table
+	uint cubeIndex = 0;
+	if(cellValues[0] < _IsoLevel) cubeIndex |= 1;
+	if(cellValues[1] < _IsoLevel) cubeIndex |= 2;
+	if(cellValues[2] < _IsoLevel) cubeIndex |= 4;
+	if(cellValues[3] < _IsoLevel) cubeIndex |= 8;
+	if(cellValues[4] < _IsoLevel) cubeIndex |= 16;
+	if(cellValues[5] < _IsoLevel) cubeIndex |= 32;
+	if(cellValues[6] < _IsoLevel) cubeIndex |= 64;
+	if(cellValues[7] < _IsoLevel) cubeIndex |= 128;
+
+	int edges[] = triTable[cubeIndex];
+
+    for (int i = 0; edges[i] != -1; i += 3)
+    {
+        // First edge lies between vertex e00 and vertex e01
+        int e00 = edgeConnections[edges[i]][0];
+        int e01 = edgeConnections[edges[i]][1];
+
+        // Second edge lies between vertex e10 and vertex e11
+        int e10 = edgeConnections[edges[i + 1]][0];
+        int e11 = edgeConnections[edges[i + 1]][1];
+        
+        // Third edge lies between vertex e20 and vertex e21
+        int e20 = edgeConnections[edges[i + 2]][0];
+        int e21 = edgeConnections[edges[i + 2]][1];
+
+        Triangle tri;
+
+        tri.a = LinearInterp(cornerOffsets[e00], cellValues[e00], cornerOffsets[e01], cellValues[e01]) + id;
+        tri.b = LinearInterp(cornerOffsets[e10], cellValues[e10], cornerOffsets[e11], cellValues[e11]) + id;
+        tri.c = LinearInterp(cornerOffsets[e20], cellValues[e20], cornerOffsets[e21], cellValues[e21]) + id;
+        _Triangles.Append(tri);
+
+    }
+
+
+
+}
