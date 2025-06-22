@@ -2,6 +2,8 @@
 
 This project is a exploration of generating real-time 3D meshes in Unity using a compute shader implementation of the Marching Cubes algorithm. The goal was to experiment with GPU-based mesh generation, chunking, and noise-driven scalar fields.
 
+![Demo](Noise.gif)
+
 ## Overview
 
 - Implements Marching Cubes in a compute shader
@@ -11,6 +13,8 @@ This project is a exploration of generating real-time 3D meshes in Unity using a
 - Built to explore workflows for scalable, procedural surfaces
 
 Chunks are sized at 16×16×16 scalar values (15×15×15 cubes). At a max of 15 vertices per cube, this keeps each chunk just below Unity’s vertex cap. A basic chunk manager was added to test the system at larger scales.
+
+![Demo](Visualize.gif)
 
 ## Future work
 
